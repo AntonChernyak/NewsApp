@@ -2,6 +2,7 @@ package ru.educationalwork.news
 
 import android.content.Intent
 import android.net.Uri
+import android.text.Html
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -45,6 +46,9 @@ class RecHolder(view: View) : RecyclerView.ViewHolder(view) {
         val vDesc = itemView.findViewById<TextView>(R.id.item_description)
         val vThumb = itemView.findViewById<ImageView>(R.id.item_thumb)
         vTitle.text = item.title
+        /* Если описание с тегами html, то убрать их:
+             vDesc.text = Html.fromHtml(item.description)
+         */
         vDesc.text = item.description
 
         // Picasso автоматически подгружает изображения и даёт нам их хеширование

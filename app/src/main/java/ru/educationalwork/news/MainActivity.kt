@@ -2,6 +2,7 @@ package ru.educationalwork.news
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.gson.Gson
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -9,6 +10,7 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import io.realm.Realm
 import io.realm.RealmList
+import kotlinx.android.synthetic.main.activity_fragment.*
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -20,7 +22,7 @@ class MainActivity : AppCompatActivity() {
         // Инициализация БД Realm
         Realm.init(this)
 
-         /**
+        /**
          * Важно --- не передавать параметры через конструктор. Только через Bundle
          * val bundle = Bundle()
          * bundle.putString("key", "value")
@@ -44,19 +46,28 @@ class MainActivity : AppCompatActivity() {
          */
         // Система, если происходит восстановление активити (savedInstanceState != null), сама создаст Fragment
         if (savedInstanceState == null)
-            this@MainActivity.supportFragmentManager.beginTransaction().replace(R.id.fragment_place, MainFragment()).commitAllowingStateLoss()
+            this@MainActivity.supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_place, MainFragment()).commitAllowingStateLoss()
 
     }
 
     fun showArticle(url: String) {
         val bundle = Bundle()
         bundle.putString("url", url)
-        val fragment  = WebBrowserFragment()
+        val fragment = WebBrowserFragment()
         fragment.arguments = bundle
-        /**
-         * addToBackStack("name") - позволяет упорядочить фрагменты, и сделать так, чтобы наш фрагмент закрывался по нажатию кнопки назад
-         */
-        this.supportFragmentManager.beginTransaction().add(R.id.fragment_place, fragment).addToBackStack("main").commitAllowingStateLoss()
+
+        if (fragment_place_webView != null) {
+            fragment_place_webView?.visibility = View.VISIBLE
+            this.supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_place_webView, fragment).commitAllowingStateLoss()
+        } else {
+            /**
+             * addToBackStack("name") - позволяет упорядочить фрагменты, и сделать так, чтобы наш фрагмент закрывался по нажатию кнопки назад
+             */
+            this.supportFragmentManager.beginTransaction().add(R.id.fragment_place, fragment)
+                .addToBackStack("main").commitAllowingStateLoss()
+        }
     }
 
 }
