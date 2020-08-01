@@ -13,64 +13,50 @@ import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
 
-    var request: Disposable? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        // Тут теперь разметка фрагмента!!!
+        setContentView(R.layout.activity_fragment)
+        // Инициализация БД Realm
         Realm.init(this)
-        // RxJava. Observable - самый используемый класс, у котого Generic - тип возвращаемого значения
-        val o =
-            createRequest("https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2F3dnews.ru%2Fnews%2Frss%2F")
-                // rss даёт результат в виде xml. Необходимо преобразовать в объект json с помощью map --> библиотека GSON
-                // it - строка, которую переводим. Feed - наш класс, с теми же полями, что и по ссылке
-                // не забыть запросить разрешение INTERNET в манифесте
-                .map { Gson().fromJson(it, FeedAPI::class.java) }
-                .subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
 
-        // Запускаем код. ({} - результат, {} - функция, которая вызывается при ошибке (нет сети например))
-        request = o.subscribe({
-            val feed = FeedRealm(it.items.mapTo(RealmList<FeedItemRealm>(), {feed -> FeedItemRealm(feed.title, feed.link, feed.enclosure.link, feed.description) }))
+         /**
+         * Важно --- не передавать параметры через конструктор. Только через Bundle
+         * val bundle = Bundle()
+         * bundle.putString("key", "value")
+         * val fragment = MainFragment()
+         * fragment.arguments = bundle
+         * Теперь вместо MainFragment() передаём fragment
+         *
+         * Данные доставать лучше в onCreate фрагмента:
+         * val key = arguments.getString("key")
+         */
 
-            // Записываем в БД Realm
-            Realm.getDefaultInstance().executeTransaction { realm ->
-                // Если в БД были старые данные, то стираем их, чтобы не хранить мусор
-                // Для начала найдём FeedList
-                val oldList = realm.where(FeedRealm::class.java).findAll()
-                //Есть он есть, то удаляем элементы
-                if (oldList.size > 0) oldList.map { oldItem -> oldItem.deleteFromRealm() }
-                // Теперь записываем элементы
-                realm.copyToRealm(feed)
-            }
-
-            showRecView()
-        }, {
-            // Если нет сети, то он покажет последние данные из БД
-            showRecView()
-        })
-
+        /**
+         * Т.к. commit не происходит сразу, то если между/во время этой операции, если что-то случиться
+         * (кто-то позвонит и приложение перейдёт в onPause), то будут проблемы и падения
+         * Варианты
+         * 1) try-catch, но что делать при такой проблеме - не понятно
+         * 2) this@MainActivity.supportFragmentManager.executePendingTransactions() --- коммит обязан будет
+         *      произойти здесь и сейчас, но добавляет тормозов и падает при вложенных фрагментах
+         * 3) ЛУЧШЕ! Вместо commit() использовать commitAllowingStateLoss() --- в плохом случае мы получим
+         *      неопределённое состояние, когда коммит просто потеряется.
+         */
+        // Система, если происходит восстановление активити (savedInstanceState != null), сама создаст Fragment
+        if (savedInstanceState == null)
+            this@MainActivity.supportFragmentManager.beginTransaction().replace(R.id.fragment_place, MainFragment()).commitAllowingStateLoss()
 
     }
 
-    fun showRecView() {
-        // Запрашиваем данные из БД
-       Realm.getDefaultInstance().executeTransaction {realm ->
-            val feed = realm.where(FeedRealm::class.java).findAll()
-            // Т.к. максимум в БД 1 элемент, т.к. старые feed мы стираем, то можем обратиться сразу к 1-му эл-ту
-           if (feed.size > 0){
-               // Наполняем адаптер
-               recyclerView.adapter = RecyclerAdapter(feed[0]!!.items)
-               // Задаём вид
-               recyclerView.layoutManager = LinearLayoutManager(this)
-           }
-       }
+    fun showArticle(url: String) {
+        val bundle = Bundle()
+        bundle.putString("url", url)
+        val fragment  = WebBrowserFragment()
+        fragment.arguments = bundle
+        /**
+         * addToBackStack("name") - позволяет упорядочить фрагменты, и сделать так, чтобы наш фрагмент закрывался по нажатию кнопки назад
+         */
+        this.supportFragmentManager.beginTransaction().add(R.id.fragment_place, fragment).addToBackStack("main").commitAllowingStateLoss()
     }
 
-    override fun onDestroy() {
-        // предотвращает утечку памяти (как в AsyncTask). Обрывает цепочку, удаляется ссылка на subscribe и ссылка на activity
-        // всё чистит сборщик мусора
-        request?.dispose()
-        super.onDestroy()
-    }
 }
-

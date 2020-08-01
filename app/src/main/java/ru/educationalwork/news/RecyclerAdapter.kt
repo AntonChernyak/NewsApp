@@ -12,7 +12,7 @@ import com.squareup.picasso.Picasso
 import io.realm.RealmList
 
 
-class RecyclerAdapter(val items: RealmList<FeedItemRealm>): RecyclerView.Adapter<RecHolder>() {
+class RecyclerAdapter(val items: RealmList<FeedItemRealm>) : RecyclerView.Adapter<RecHolder>() {
     // Создаём Holder
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecHolder {
         // Получаем inflater. У того родителя, который вызовет адаптер точно будет контекст
@@ -37,7 +37,7 @@ class RecyclerAdapter(val items: RealmList<FeedItemRealm>): RecyclerView.Adapter
 }
 
 // Holder --- класс-контейнер, в который мы заворачиваем UI
-class RecHolder(view: View):RecyclerView.ViewHolder(view){
+class RecHolder(view: View) : RecyclerView.ViewHolder(view) {
 
     // itemView (поле внутри ViewHolder'a) == view (Поле нашего Holder'a)
     fun bind(item: FeedItemRealm) {
@@ -48,12 +48,16 @@ class RecHolder(view: View):RecyclerView.ViewHolder(view){
         vDesc.text = item.description
 
         // Picasso автоматически подгружает изображения и даёт нам их хеширование
-       // Picasso.with(vThumb.context).load(item.enclosure).into(vThumb)
-       Picasso.with(vThumb.context).load(item.enclosure).into(vThumb)
+        Picasso.with(vThumb.context).load(item.enclosure).into(vThumb)
 
         itemView.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.link))
-            vThumb.context.startActivity(intent)
+            /** Открываем второй фрагмент. Для этого нужно добраться до активити, т.к. активити теперь -
+             *  это менеджер фрагментов. Если фрагмент используется только в 1-й активити, то:
+             *  view.context as MainActivity
+             * Если в несколько активити, то, например, через интерфейсы.
+             * */
+            // val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.link)) - если хотим открыть в внешнем браузере
+            (vThumb.context as MainActivity).showArticle(item.link)
         }
 
     }
